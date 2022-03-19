@@ -33,11 +33,11 @@ export default function App() {
   const effEnc = useMemo(() => calculateEffEnc(formEncs.map((encOpt) => encOpt.value)), [formEncs]);
 
   if (!encData || !equData) {
-    return <div>Loading...</div>;
+    return <div className="max-w-2xl mx-auto p-4">Loading...</div>;
   }
 
   return (
-    <div className="max-w-xl mx-auto p-4">
+    <div className="max-w-2xl mx-auto p-4">
       <h1 className="mb-4 text-xl font-bold">Minecraft Efficient Enchant</h1>
       <Select
         className="mb-2"
