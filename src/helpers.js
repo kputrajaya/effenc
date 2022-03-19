@@ -48,16 +48,10 @@ export const getEncDisplay = (enc) =>
 export function calculateEffEnc(encs) {
   if (!encs) return null;
 
-  const medianCost = (items) => {
-    const sorted = items.slice().sort((a, b) => a.cost - b.cost);
-    const middle = Math.floor(sorted.length / 2);
-    return sorted.length % 2 === 0 ? (sorted[middle - 1].cost + sorted[middle].cost) / 2 : sorted[middle].cost;
-  };
-  const mergeItems = (a, b, itemsMedianCost) => {
+  const mergeItems = (a, b) => {
     if (b.isEqu || (!a.isEqu && b.cost > a.cost)) {
       [a, b] = [b, a];
     }
-    if ((!a.isEqu && a.cost < itemsMedianCost) || b.cost > itemsMedianCost) return false;
     const levelCost = b.cost + PENALTY_LEVEL[a.penalty] + PENALTY_LEVEL[b.penalty];
     const xpCost = LEVEL_XP[levelCost];
     if (isNaN(xpCost)) return false;
@@ -90,12 +84,11 @@ export function calculateEffEnc(encs) {
       };
     }
 
-    const itemsMedianCost = medianCost(items);
     const paths = items.flatMap((a, aIdx) =>
       items
         .slice(aIdx + 1)
         .map((b, bIdx) => {
-          const curMerge = mergeItems(a, b, itemsMedianCost);
+          const curMerge = mergeItems(a, b);
           if (!curMerge) return false;
           return recurse(
             [...items.filter((c, cIdx) => cIdx !== aIdx && cIdx !== aIdx + bIdx + 1), curMerge.item],
