@@ -20,16 +20,16 @@ export const LEVEL_XP = {
   18: 441,
   19: 493,
   20: 550,
-  21: 612,
-  22: 679,
-  23: 751,
-  24: 828,
-  25: 910,
-  26: 997,
-  27: 1089,
-  28: 1186,
-  29: 1288,
-  30: 1395,
+  // 21: 612,
+  // 22: 679,
+  // 23: 751,
+  // 24: 828,
+  // 25: 910,
+  // 26: 997,
+  // 27: 1089,
+  // 28: 1186,
+  // 29: 1288,
+  // 30: 1395,
 };
 export const PENALTY_LEVEL = {
   0: 0,
@@ -52,9 +52,10 @@ export function calculateEffEnc(encs) {
     if (b.isEqu || (!a.isEqu && b.cost > a.cost)) {
       [a, b] = [b, a];
     }
+    if (Math.abs(a.penalty - b.penalty) > (a.isEqu ? 2 : 1)) return null;
     const levelCost = b.cost + PENALTY_LEVEL[a.penalty] + PENALTY_LEVEL[b.penalty];
     const xpCost = LEVEL_XP[levelCost];
-    if (isNaN(xpCost)) return false;
+    if (isNaN(xpCost)) return null;
 
     const item = {
       isEqu: a.isEqu,
@@ -66,9 +67,8 @@ export function calculateEffEnc(encs) {
   };
   const recurse = (items, steps = [], levelCost = 0, xpCost = 0) => {
     if (items.length === 2) {
-      const [equ, book] = items[0].isEqu ? [items[0], items[1]] : [items[1], items[0]];
-      const curMerge = mergeItems(equ, book);
-      if (!curMerge) return false;
+      const curMerge = items[0].isEqu ? mergeItems(items[0], items[1]) : mergeItems(items[1], items[0]);
+      if (!curMerge) return null;
       return {
         steps: [
           ...steps,
@@ -84,36 +84,37 @@ export function calculateEffEnc(encs) {
       };
     }
 
-    const paths = items.flatMap((a, aIdx) =>
-      items
-        .slice(aIdx + 1)
-        .map((b, bIdx) => {
-          const curMerge = mergeItems(a, b);
-          if (!curMerge) return false;
-          return recurse(
-            [...items.filter((c, cIdx) => cIdx !== aIdx && cIdx !== aIdx + bIdx + 1), curMerge.item],
-            [
-              ...steps,
-              {
-                a: curMerge.a,
-                b: curMerge.b,
-                levelCost: curMerge.levelCost,
-                xpCost: curMerge.xpCost,
-              },
-            ],
-            levelCost + curMerge.levelCost,
-            xpCost + curMerge.xpCost
-          );
-        })
-        .filter((path) => !!path)
-    );
-    return paths.sort((a, b) => {
-      if (a.levelCost > b.levelCost) return 1;
-      if (a.levelCost < b.levelCost) return -1;
-      if (a.xpCost > b.xpCost) return 1;
-      if (a.xpCost < b.xpCost) return -1;
-      return 0;
-    })[0];
+    let bestPath = null;
+    items.forEach((a, aIdx) => {
+      for (let bIdx = aIdx + 1; bIdx < items.length; bIdx++) {
+        const b = items[bIdx];
+        const curMerge = mergeItems(a, b);
+        if (!curMerge) continue;
+        const recurseResult = recurse(
+          [...items.filter((c, cIdx) => cIdx !== aIdx && cIdx !== bIdx), curMerge.item],
+          [
+            ...steps,
+            {
+              a: curMerge.a,
+              b: curMerge.b,
+              levelCost: curMerge.levelCost,
+              xpCost: curMerge.xpCost,
+            },
+          ],
+          levelCost + curMerge.levelCost,
+          xpCost + curMerge.xpCost
+        );
+        if (!recurseResult) continue;
+        if (
+          !bestPath ||
+          recurseResult.levelCost < bestPath.levelCost ||
+          (recurseResult.levelCost === bestPath.levelCost && recurseResult.xpCost < bestPath.xpCost)
+        ) {
+          bestPath = recurseResult;
+        }
+      }
+    });
+    return bestPath;
   };
 
   const result = recurse([
