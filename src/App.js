@@ -57,16 +57,16 @@ export default function App() {
           options={equOpts}
           value={formEqu}
           onChange={(opt) => {
-            setFormEqu(opt);
             setFormEncs([]);
+            setFormEqu(opt);
           }}
         />
         <Select
           className="mb-2"
           placeholder="Select enchantments..."
+          isMulti
           options={encOpts}
           isOptionDisabled={(opt) => opt.disabled}
-          isMulti
           value={formEncs}
           onChange={(opts) => setFormEncs(opts)}
         />
