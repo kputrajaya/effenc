@@ -42,13 +42,13 @@ export const PENALTY_LEVEL = {
 
 export const fetcher = (url) => fetch(url).then((res) => res.json());
 
-export const getEncDisplay = (enc) =>
+export const formatEnc = (enc) =>
   enc.max === '1' ? enc.name : `${enc.name} ${{ 2: 'II', 3: 'III', 4: 'IV', 5: 'V' }[enc.max]}`;
 
-export function calculateEffEnc(encs) {
+export function calculateSteps(encs) {
   if (!encs) return null;
 
-  const mergeItems = (a, b) => {
+  const merge = (a, b) => {
     if (b.isEqu || (!a.isEqu && b.cost > a.cost)) {
       [a, b] = [b, a];
     }
@@ -67,18 +67,10 @@ export function calculateEffEnc(encs) {
   };
   const recurse = (items, steps = [], levelCost = 0, xpCost = 0) => {
     if (items.length === 2) {
-      const curMerge = items[0].isEqu ? mergeItems(items[0], items[1]) : mergeItems(items[1], items[0]);
+      const curMerge = items[0].isEqu ? merge(items[0], items[1]) : merge(items[1], items[0]);
       if (!curMerge) return null;
       return {
-        steps: [
-          ...steps,
-          {
-            a: curMerge.a,
-            b: curMerge.b,
-            levelCost: curMerge.levelCost,
-            xpCost: curMerge.xpCost,
-          },
-        ],
+        steps: [...steps, { a: curMerge.a, b: curMerge.b, levelCost: curMerge.levelCost, xpCost: curMerge.xpCost }],
         levelCost: levelCost + curMerge.levelCost,
         xpCost: xpCost + curMerge.xpCost,
       };
@@ -88,36 +80,28 @@ export function calculateEffEnc(encs) {
     items.forEach((a, aIdx) => {
       for (let bIdx = aIdx + 1; bIdx < items.length; bIdx++) {
         const b = items[bIdx];
-        const curMerge = mergeItems(a, b);
+        const curMerge = merge(a, b);
         if (!curMerge) continue;
-        const recurseResult = recurse(
+        const curPath = recurse(
           [...items.filter((c, cIdx) => cIdx !== aIdx && cIdx !== bIdx), curMerge.item],
-          [
-            ...steps,
-            {
-              a: curMerge.a,
-              b: curMerge.b,
-              levelCost: curMerge.levelCost,
-              xpCost: curMerge.xpCost,
-            },
-          ],
+          [...steps, { a: curMerge.a, b: curMerge.b, levelCost: curMerge.levelCost, xpCost: curMerge.xpCost }],
           levelCost + curMerge.levelCost,
           xpCost + curMerge.xpCost
         );
-        if (!recurseResult) continue;
+        if (!curPath) continue;
         if (
           !bestPath ||
-          recurseResult.levelCost < bestPath.levelCost ||
-          (recurseResult.levelCost === bestPath.levelCost && recurseResult.xpCost < bestPath.xpCost)
+          curPath.levelCost < bestPath.levelCost ||
+          (curPath.levelCost === bestPath.levelCost && curPath.xpCost < bestPath.xpCost)
         ) {
-          bestPath = recurseResult;
+          bestPath = curPath;
         }
       }
     });
     return bestPath;
   };
 
-  const result = recurse([
+  const initialItems = [
     {
       isEqu: true,
       encs: [],
@@ -126,10 +110,10 @@ export function calculateEffEnc(encs) {
     },
     ...encs.map((enc) => ({
       isEqu: false,
-      encs: [getEncDisplay(enc)],
+      encs: [formatEnc(enc)],
       cost: enc.max * enc.cost,
       penalty: 0,
     })),
-  ]);
-  return result;
+  ];
+  return recurse(initialItems);
 }

@@ -2,21 +2,19 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Select from 'react-select';
 
-import { calculateEffEnc, fetcher, getEncDisplay, SHEET_URL } from './helpers';
+import { calculateSteps, fetcher, formatEnc, SHEET_URL } from './helpers';
 import Item from './Item';
 
 export default function App() {
   const [formEqu, setFormEqu] = useState();
   const [formEncs, setFormEncs] = useState([]);
   const [calculating, setCalculating] = useState(false);
-  const [effEnc, setEffEnc] = useState();
-
+  const [steps, setSteps] = useState();
   const { data: encData } = useSWR(`${SHEET_URL}/Enchantment`, fetcher);
   const { data: equData } = useSWR(`${SHEET_URL}/Equipment`, fetcher);
-
   const equOpts = useMemo(() => (equData ? equData.map((equ) => ({ value: equ, label: equ.name })) : []), [equData]);
   const encOpts = useMemo(() => {
-    if (!formEqu?.value?.enchantments) return [];
+    if (!encData || !formEqu?.value?.enchantments) return [];
 
     const equEncs = new Set(formEqu.value.enchantments.split(','));
     const incompatEncs = new Set(
@@ -27,7 +25,7 @@ export default function App() {
       .filter((enc) => equEncs.has(enc.id))
       .map((enc) => ({
         value: enc,
-        label: getEncDisplay(enc),
+        label: formatEnc(enc),
         disabled: incompatEncs.has(enc.id),
       }))
       .sort((a, b) => a.disabled - b.disabled);
@@ -37,9 +35,9 @@ export default function App() {
     setCalculating(true);
     setTimeout(() => {
       const start = performance.now();
-      setEffEnc(calculateEffEnc(formEncs.map((encOpt) => encOpt.value)));
+      setSteps(calculateSteps(formEncs.map((encOpt) => encOpt.value)));
       const end = performance.now();
-      console.log(`Took ${end - start} ms`);
+      console.log(`Calculating steps took ${end - start} ms`);
       setCalculating(false);
     }, 0);
   };
@@ -78,9 +76,9 @@ export default function App() {
         </button>
 
         {calculating && <div className="text-neutral-400 italic">Calculating...</div>}
-        {!calculating && effEnc && (
+        {!calculating && steps && (
           <div>
-            <h2 className="mb-4 text-lg font-bold">Combining Order</h2>
+            <h2 className="mb-4 text-lg font-bold">Combining Steps</h2>
             <table className="w-full">
               <thead>
                 <tr>
@@ -92,7 +90,7 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {effEnc.steps.map((step, index) => (
+                {steps.steps.map((step, index) => (
                   <tr key={`step-${index}`}>
                     <td>{index + 1}</td>
                     <td>
@@ -110,8 +108,8 @@ export default function App() {
                 <tr>
                   <th></th>
                   <th colSpan="2">Total Cost</th>
-                  <th className="text-right">{effEnc.levelCost}</th>
-                  <th className="text-right">{effEnc.xpCost}</th>
+                  <th className="text-right">{steps.levelCost}</th>
+                  <th className="text-right">{steps.xpCost}</th>
                 </tr>
               </tfoot>
             </table>
