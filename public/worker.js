@@ -1,5 +1,4 @@
-export const SHEET_URL = `https://opensheet.elk.sh/1jVwBONNQYHBehcw_LbfVzaKOkbGqd6CJighwQvpdKBk`;
-export const LEVEL_XP = {
+const LEVEL_XP = {
   1: 7,
   2: 16,
   3: 27,
@@ -20,6 +19,7 @@ export const LEVEL_XP = {
   18: 441,
   19: 493,
   20: 550,
+  // Comment below to speed up process
   // 21: 612,
   // 22: 679,
   // 23: 751,
@@ -31,7 +31,7 @@ export const LEVEL_XP = {
   // 29: 1288,
   // 30: 1395,
 };
-export const PENALTY_LEVEL = {
+const PENALTY_LEVEL = {
   0: 0,
   1: 1,
   2: 3,
@@ -40,12 +40,7 @@ export const PENALTY_LEVEL = {
   5: 31,
 };
 
-export const fetcher = (url) => fetch(url).then((res) => res.json());
-
-export const formatEnc = (enc) =>
-  enc.max === '1' ? enc.name : `${enc.name} ${{ 2: 'II', 3: 'III', 4: 'IV', 5: 'V' }[enc.max]}`;
-
-export function calculateSteps(encs) {
+const calculateSteps = (encs) => {
   if (!encs) return null;
 
   const merge = (a, b) => {
@@ -110,10 +105,18 @@ export function calculateSteps(encs) {
     },
     ...encs.map((enc) => ({
       isEqu: false,
-      encs: [formatEnc(enc)],
+      encs: [enc.name],
       cost: enc.max * enc.cost,
       penalty: 0,
     })),
   ];
   return recurse(initialItems);
-}
+};
+
+onmessage = (e) => {
+  const { encs } = e.data;
+  const start = performance.now();
+  const result = calculateSteps(encs);
+  const duration = performance.now() - start;
+  postMessage({ result, duration });
+};

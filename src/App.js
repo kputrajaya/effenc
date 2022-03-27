@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Select from 'react-select';
 
-import { calculateSteps, fetcher, formatEnc, SHEET_URL } from './helpers';
 import Item from './Item';
 
 export default function App() {
@@ -10,8 +9,17 @@ export default function App() {
   const [formEncs, setFormEncs] = useState([]);
   const [calculating, setCalculating] = useState(false);
   const [steps, setSteps] = useState();
-  const { data: encData } = useSWR(`${SHEET_URL}/Enchantment`, fetcher);
-  const { data: equData } = useSWR(`${SHEET_URL}/Equipment`, fetcher);
+
+  const fetcher = (url) => fetch(url).then((res) => res.json());
+  const { data: encData } = useSWR(
+    'https://opensheet.elk.sh/1jVwBONNQYHBehcw_LbfVzaKOkbGqd6CJighwQvpdKBk/Enchantment',
+    fetcher
+  );
+  const { data: equData } = useSWR(
+    'https://opensheet.elk.sh/1jVwBONNQYHBehcw_LbfVzaKOkbGqd6CJighwQvpdKBk/Equipment',
+    fetcher
+  );
+
   const equOpts = useMemo(() => (equData ? equData.map((equ) => ({ value: equ, label: equ.name })) : []), [equData]);
   const encOpts = useMemo(() => {
     if (!encData || !formEqu?.value?.enchantments) return [];
@@ -20,12 +28,11 @@ export default function App() {
     const incompatEncs = new Set(
       formEncs.flatMap((encOpt) => (encOpt.value.incompatible ? encOpt.value.incompatible.split(',') : []))
     );
-
     return encData
       .filter((enc) => equEncs.has(enc.id))
       .map((enc) => ({
         value: enc,
-        label: formatEnc(enc),
+        label: enc.max === '1' ? enc.name : `${enc.name} ${{ 2: 'II', 3: 'III', 4: 'IV', 5: 'V' }[enc.max]}`,
         disabled: incompatEncs.has(enc.id),
       }))
       .sort((a, b) => a.disabled - b.disabled);
@@ -33,16 +40,20 @@ export default function App() {
 
   const calculate = () => {
     setCalculating(true);
-    setTimeout(() => {
-      const start = performance.now();
-      setSteps(calculateSteps(formEncs.map((encOpt) => encOpt.value)));
-      const end = performance.now();
-      console.log(`Calculating steps took ${end - start} ms`);
+
+    const worker = new window.Worker('/worker.js');
+    worker.postMessage({ encs: formEncs.map((encOpt) => encOpt.value) });
+    worker.onerror = (err) => err;
+    worker.onmessage = (e) => {
+      const { result, duration } = e.data;
+      console.log(`Calculating steps took ${duration} ms`);
+      setSteps(result);
       setCalculating(false);
-    }, 0);
+      worker.terminate();
+    };
   };
 
-  const renderContent = () => {
+  const render = () => {
     if (!encData || !equData) {
       return <div className="text-neutral-500 italic">Loading...</div>;
     }
@@ -63,6 +74,8 @@ export default function App() {
           className="mb-2"
           placeholder="Select enchantments..."
           isMulti
+          closeMenuOnSelect={false}
+          blurInputOnSelect={false}
           options={encOpts}
           isOptionDisabled={(opt) => opt.disabled}
           value={formEncs}
@@ -118,11 +131,10 @@ export default function App() {
       </>
     );
   };
-
   return (
     <div className="max-w-2xl mx-auto py-6 px-4">
       <h1 className="mb-6 text-xl text-emerald-800 font-bold">Minecraft Efficient Enchant</h1>
-      {renderContent()}
+      {render()}
     </div>
   );
 }
