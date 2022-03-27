@@ -40,7 +40,6 @@ export default function App() {
 
   const calculate = () => {
     setCalculating(true);
-
     const worker = new window.Worker('/worker.js');
     worker.postMessage({ encs: formEncs.map((encOpt) => encOpt.value) });
     worker.onerror = (err) => err;
