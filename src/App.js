@@ -42,7 +42,6 @@ export default function App() {
     setCalculating(true);
     const worker = new window.Worker('/worker.js');
     worker.postMessage({ encs: formEncs.map((encOpt) => encOpt.value) });
-    worker.onerror = (err) => err;
     worker.onmessage = (e) => {
       const { result, duration } = e.data;
       console.log(`Calculating steps took ${duration} ms`);
