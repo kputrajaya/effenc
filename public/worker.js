@@ -19,7 +19,8 @@ const LEVEL_XP = {
   18: 441,
   19: 493,
   20: 550,
-  // Comment below to speed up process
+
+  // Skip expensive operations (speed up)
   // 21: 612,
   // 22: 679,
   // 23: 751,
@@ -40,61 +41,68 @@ const PENALTY_LEVEL = {
   5: 31,
 };
 
+const merge = (a, b) => {
+  // Ensure equipment is on the left / cheaper book is on the right
+  if (b.isEqu || (!a.isEqu && b.cost > a.cost)) {
+    [a, b] = [b, a];
+  }
+
+  // Skip if penalty gap is too big (speed up)
+  if (Math.abs(a.penalty - b.penalty) > (a.isEqu ? 2 : 1)) return null;
+
+  // Calculate cost
+  const levelCost = b.cost + PENALTY_LEVEL[a.penalty] + PENALTY_LEVEL[b.penalty];
+  const xpCost = LEVEL_XP[levelCost];
+  if (isNaN(xpCost)) return null;
+
+  const item = {
+    isEqu: a.isEqu,
+    encs: [...a.encs, ...b.encs],
+    cost: a.cost + b.cost,
+    penalty: Math.max(a.penalty, b.penalty) + 1,
+  };
+  return { item, step: { a, b, levelCost, xpCost } };
+};
+
+const recurse = (items, steps = [], levelCost = 0, xpCost = 0) => {
+  // Merge the remaining 2
+  if (items.length === 2) {
+    const curMerge = merge(items[0], items[1]);
+    if (!curMerge) return null;
+    return {
+      steps: [...steps, curMerge.step],
+      levelCost: levelCost + curMerge.step.levelCost,
+      xpCost: xpCost + curMerge.step.xpCost,
+    };
+  }
+
+  // Brute force
+  let bestPath = null;
+  items.forEach((a, aIdx) => {
+    for (let bIdx = aIdx + 1; bIdx < items.length; bIdx++) {
+      const curMerge = merge(a, items[bIdx]);
+      if (!curMerge) continue;
+      const curPath = recurse(
+        [...items.filter((_, cIdx) => cIdx !== aIdx && cIdx !== bIdx), curMerge.item],
+        [...steps, curMerge.step],
+        levelCost + curMerge.step.levelCost,
+        xpCost + curMerge.step.xpCost
+      );
+      if (!curPath) continue;
+      if (
+        !bestPath ||
+        curPath.levelCost < bestPath.levelCost ||
+        (curPath.levelCost === bestPath.levelCost && curPath.xpCost < bestPath.xpCost)
+      ) {
+        bestPath = curPath;
+      }
+    }
+  });
+  return bestPath;
+};
+
 const calculateSteps = (encs) => {
   if (!encs) return null;
-
-  const merge = (a, b) => {
-    if (b.isEqu || (!a.isEqu && b.cost > a.cost)) {
-      [a, b] = [b, a];
-    }
-    if (Math.abs(a.penalty - b.penalty) > (a.isEqu ? 2 : 1)) return null;
-    const levelCost = b.cost + PENALTY_LEVEL[a.penalty] + PENALTY_LEVEL[b.penalty];
-    const xpCost = LEVEL_XP[levelCost];
-    if (isNaN(xpCost)) return null;
-
-    const item = {
-      isEqu: a.isEqu,
-      encs: [...a.encs, ...b.encs],
-      cost: a.cost + b.cost,
-      penalty: Math.max(a.penalty, b.penalty) + 1,
-    };
-    return { a, b, item, levelCost, xpCost };
-  };
-  const recurse = (items, steps = [], levelCost = 0, xpCost = 0) => {
-    if (items.length === 2) {
-      const curMerge = items[0].isEqu ? merge(items[0], items[1]) : merge(items[1], items[0]);
-      if (!curMerge) return null;
-      return {
-        steps: [...steps, { a: curMerge.a, b: curMerge.b, levelCost: curMerge.levelCost, xpCost: curMerge.xpCost }],
-        levelCost: levelCost + curMerge.levelCost,
-        xpCost: xpCost + curMerge.xpCost,
-      };
-    }
-
-    let bestPath = null;
-    items.forEach((a, aIdx) => {
-      for (let bIdx = aIdx + 1; bIdx < items.length; bIdx++) {
-        const b = items[bIdx];
-        const curMerge = merge(a, b);
-        if (!curMerge) continue;
-        const curPath = recurse(
-          [...items.filter((c, cIdx) => cIdx !== aIdx && cIdx !== bIdx), curMerge.item],
-          [...steps, { a: curMerge.a, b: curMerge.b, levelCost: curMerge.levelCost, xpCost: curMerge.xpCost }],
-          levelCost + curMerge.levelCost,
-          xpCost + curMerge.xpCost
-        );
-        if (!curPath) continue;
-        if (
-          !bestPath ||
-          curPath.levelCost < bestPath.levelCost ||
-          (curPath.levelCost === bestPath.levelCost && curPath.xpCost < bestPath.xpCost)
-        ) {
-          bestPath = curPath;
-        }
-      }
-    });
-    return bestPath;
-  };
 
   const initialItems = [
     {
