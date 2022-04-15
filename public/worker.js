@@ -68,12 +68,13 @@ const recurse = (items, steps = [], levelCost = 0, xpCost = 0) => {
   // Merge the remaining 2
   if (items.length === 2) {
     const curMerge = merge(items[0], items[1]);
-    if (!curMerge) return null;
-    return {
-      steps: [...steps, curMerge.step],
-      levelCost: levelCost + curMerge.step.levelCost,
-      xpCost: xpCost + curMerge.step.xpCost,
-    };
+    return curMerge
+      ? {
+          steps: [...steps, curMerge.step],
+          levelCost: levelCost + curMerge.step.levelCost,
+          xpCost: xpCost + curMerge.step.xpCost,
+        }
+      : null;
   }
 
   // Brute force
@@ -88,11 +89,11 @@ const recurse = (items, steps = [], levelCost = 0, xpCost = 0) => {
         levelCost + curMerge.step.levelCost,
         xpCost + curMerge.step.xpCost
       );
-      if (!curPath) continue;
       if (
-        !bestPath ||
-        curPath.levelCost < bestPath.levelCost ||
-        (curPath.levelCost === bestPath.levelCost && curPath.xpCost < bestPath.xpCost)
+        curPath &&
+        (!bestPath ||
+          curPath.levelCost < bestPath.levelCost ||
+          (curPath.levelCost === bestPath.levelCost && curPath.xpCost < bestPath.xpCost))
       ) {
         bestPath = curPath;
       }
