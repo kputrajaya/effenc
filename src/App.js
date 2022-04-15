@@ -5,10 +5,10 @@ import Select from 'react-select';
 import Item from './Item';
 
 export default function App() {
-  const [formEqu, setFormEqu] = useState();
+  const [formEqu, setFormEqu] = useState(null);
   const [formEncs, setFormEncs] = useState([]);
   const [calculating, setCalculating] = useState(false);
-  const [steps, setSteps] = useState();
+  const [steps, setSteps] = useState(null);
 
   const fetcher = (url) => fetch(url).then((res) => res.json());
   const { data: encData } = useSWR(
@@ -65,6 +65,7 @@ export default function App() {
           value={formEqu}
           onChange={(opt) => {
             setFormEncs([]);
+            setSteps(null);
             setFormEqu(opt);
           }}
         />
