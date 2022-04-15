@@ -1,6 +1,6 @@
 # Effenc
 
-Minecraft efficient enchantment order calculator. 
+Minecraft efficient enchantment order calculator.
 
 ## Built With
 

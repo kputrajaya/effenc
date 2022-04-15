@@ -132,7 +132,7 @@ export default function App() {
   };
   return (
     <div className="max-w-2xl mx-auto py-6 px-4">
-      <h1 className="mb-6 text-xl text-emerald-800 font-bold">Minecraft Efficient Enchant</h1>
+      <h1 className="mb-6 text-xl text-emerald-800 font-bold">Minecraft Enchantment Order</h1>
       {render()}
     </div>
   );
